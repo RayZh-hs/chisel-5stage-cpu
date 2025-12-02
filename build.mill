@@ -1,0 +1,18 @@
+import mill._
+import mill.scalalib._
+
+object cpu extends ScalaModule {
+  def scalaVersion = "2.13.18"
+
+  // Declare Chisel Library
+  def ivyDeps = Agg(
+    ivy"org.chipsalliance::chisel:7.4.0"
+  )
+
+  // Compiler Plugin
+  def scalacPluginIvyDeps = Agg(
+    ivy"org.chipsalliance:chisel-plugin_2.13.18:7.4.0"
+  )
+
+  override def sources = T.sources(millSourcePath / "src")
+}

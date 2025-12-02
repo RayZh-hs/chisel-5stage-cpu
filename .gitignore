@@ -1,0 +1,15 @@
+.bsp
+.metals
+.target
+
+.vscode
+.idea
+
+target
+out
+verification
+
+filelist.f
+
+*.v
+*.vh
