@@ -17,7 +17,6 @@ class RV32ICore(val hexFile: String) extends Module {
     // Connect Components
     // - IF Stage
     instMemory.io.addr := instFetcher.io.instMemoryReadAddr
-    instFetcher.io.instMemoryReadData := instMemory.io.inst
     // - IF/ID Pipeline
     instDecoder.io.inst := RegNext(instFetcher.io.fetchedInst)
     // - ID/EX Pipeline
