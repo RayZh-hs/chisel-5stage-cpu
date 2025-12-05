@@ -2,9 +2,10 @@ package components
 
 import chisel3._
 import chisel3.util._
+import utility._
 import common.Constants
 
-class InstDecoder extends Module {
+class InstDecoder extends CycleAwareModule {
     val io = IO(new Bundle {
         val inst = Input(UInt(32.W))
         val decodedInst = Output(new common.DecodedInstBundle)

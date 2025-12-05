@@ -2,7 +2,6 @@ package components
 
 import chisel3._
 import chisel3.util._
-import javax.swing.InputMap
 
 /**
  * @brief Arithmetic Logic Unit (ALU) Module for RISC-V Processor

@@ -2,16 +2,22 @@ package components
 
 import chisel3._
 import chisel3.util._
+import utility._
 import common.Constants
 
-class InstFetcher extends Module {
+class InstFetcher extends CycleAwareModule {
+    private object InstFetcherState extends ChiselEnum {
+        val FETCH, STALL = Value
+    }
+
     private def isBranchInstruction(inst: UInt): Bool = {
         val opcode = inst(6, 0)
         return (opcode | ~"b1100011".U) === "b1111111".U
     }
 
     val io = IO(new Bundle {
-        // PC overwrite signal
+        // PC end stall endpoint
+        val pcEndStall = Input(Bool())
         val pcOverwrite = Input(Bool())
         val pcOverwriteAddr = Input(UInt(Constants.memoryBits.W))
 
@@ -24,6 +30,7 @@ class InstFetcher extends Module {
     })
     val pc = RegInit(0.U(Constants.memoryBits.W))
     val hazardStall = WireDefault(false.B)
+    private val state = RegInit(InstFetcherState.FETCH)
 
     when (io.pcOverwrite) {
         pc := io.pcOverwriteAddr
