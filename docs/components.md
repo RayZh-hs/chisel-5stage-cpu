@@ -30,4 +30,4 @@ If the either:
 - The instruction is a branch instruction (opcode 1100011)
 - The instruction is a jump instruction (opcode 1101111 or 1100111)
 
-The frontend stall flag will set, until the 
+The frontend stall flag will set, until the corresponding destination address is calculated and sent back to InstFetcher to update the PC.
