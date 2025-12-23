@@ -74,67 +74,63 @@ class InstDecoder extends CycleAwareModule {
         val rs1Val = io.regComm.regAccessParam0.readFrom(internalDecodedInst.rs1)
         val rs2Val = io.regComm.regAccessParam1.readFrom(internalDecodedInst.rs2)
 
-        // Fill decodedInst data fields
-        io.decodedInst.rs1Data := rs1Val
-        io.decodedInst.rs2Data := rs2Val
-        io.decodedInst.imm := internalDecodedInst.imm
-        io.decodedInst.rdAddr := internalDecodedInst.rd
-        io.decodedInst.pc := io.pc
-
-        // Default control signals
-        io.decodedInst.aluOp := ALUOpEnum.ADD 
+        // Default assignments
+        io.decodedInst.aluOp := ALUOpEnum.ADD
         io.decodedInst.memOp := MemoryOpEnum.NONE
-        io.decodedInst.wbSrc := WriteBackSrcEnum.ALU
-        io.decodedInst.regWrite := false.B
+        io.decodedInst.memOpWidth := MemoryOpWidthEnum.WORD
+        io.decodedInst.aluOp1 := rs1Val
+        io.decodedInst.aluOp2 := internalDecodedInst.imm
+        io.decodedInst.regWriteDest := internalDecodedInst.rd
+        io.decodedInst.memWriteData := 0.U
 
-        // Determine regWrite and other signals based on opcode
+        // Determine signals based on opcode
         switch(internalDecodedInst.opcode) {
             is("b0110011".U) { // R-Type
-                io.decodedInst.regWrite := true.B
+                io.decodedInst.aluOp := getALUOp(internalDecodedInst.funct3, internalDecodedInst.funct7, true.B)
+                io.decodedInst.aluOp2 := rs2Val
             }
             is("b0010011".U) { // I-Type (ALU)
-                io.decodedInst.regWrite := true.B
+                io.decodedInst.aluOp := getALUOp(internalDecodedInst.funct3, internalDecodedInst.funct7, false.B)
             }
             is("b0000011".U) { // Load
                 io.decodedInst.memOp := MemoryOpEnum.READ
-                io.decodedInst.wbSrc := WriteBackSrcEnum.MEM
-                io.decodedInst.regWrite := true.B
+                io.decodedInst.memOpWidth := getMemOpWidth(internalDecodedInst.funct3)
             }
             is("b0100011".U) { // Store
                 io.decodedInst.memOp := MemoryOpEnum.WRITE
+                io.decodedInst.memOpWidth := getMemOpWidth(internalDecodedInst.funct3)
+                io.decodedInst.memWriteData := rs2Val
+                io.decodedInst.regWriteDest := 0.U
             }
             is("b1100011".U) { // Branch
-                // No reg write
+                io.decodedInst.regWriteDest := 0.U
             }
             is("b0110111".U) { // LUI
-                io.decodedInst.regWrite := true.B
-                io.decodedInst.rs1Data := 0.U
+                io.decodedInst.aluOp1 := 0.U
             }
             is("b0010111".U) { // AUIPC
-                io.decodedInst.regWrite := true.B
-                io.decodedInst.rs1Data := io.pc
+                io.decodedInst.aluOp1 := io.pc
             }
             is("b1101111".U) { // JAL
-                io.decodedInst.wbSrc := WriteBackSrcEnum.PC_PLUS_4
-                io.decodedInst.regWrite := true.B
+                io.decodedInst.aluOp1 := io.pc
+                io.decodedInst.aluOp2 := 4.U
             }
             is("b1100111".U) { // JALR
-                io.decodedInst.wbSrc := WriteBackSrcEnum.PC_PLUS_4
-                io.decodedInst.regWrite := true.B
+                io.decodedInst.aluOp1 := io.pc
+                io.decodedInst.aluOp2 := 4.U
             }
         }
 
         // Mark register as busy
-        when(io.decodedInst.regWrite && internalDecodedInst.rd =/= 0.U) {
+        when(io.decodedInst.regWriteDest =/= 0.U) {
             io.regComm.markBusy.valid := true.B
-            io.regComm.markBusy.bits := internalDecodedInst.rd
+            io.regComm.markBusy.bits := io.decodedInst.regWriteDest
         }
 
         // Handle Jumps
         val isJal = internalDecodedInst.opcode === "b1101111".U
         val isJalr = internalDecodedInst.opcode === "b1100111".U
         val isBranch = internalDecodedInst.opcode === "b1100011".U
-        val isAuipc = internalDecodedInst.opcode === "b0010111".U
 
         when(isJal) {
             io.flushPC.valid := true.B
@@ -149,6 +145,39 @@ class InstDecoder extends CycleAwareModule {
             io.flushPC.bits := io.pc + internalDecodedInst.imm
             io.invokeStallFrontend := true.B
         }
+    }
+
+    private def getALUOp(funct3: UInt, funct7: UInt, isRType: Bool): ALUOpEnum.Type = {
+        val op = WireDefault(ALUOpEnum.ADD)
+        switch(funct3) {
+            is("b000".U) { // ADD/SUB
+                when(isRType && funct7(5)) { op := ALUOpEnum.SUB }
+                .otherwise { op := ALUOpEnum.ADD }
+            }
+            is("b001".U) { op := ALUOpEnum.SLL }
+            is("b010".U) { op := ALUOpEnum.SLT }
+            is("b011".U) { op := ALUOpEnum.SLTU }
+            is("b100".U) { op := ALUOpEnum.XOR }
+            is("b101".U) { // SRL/SRA
+                when(funct7(5)) { op := ALUOpEnum.SRA }
+                .otherwise { op := ALUOpEnum.SRL }
+            }
+            is("b110".U) { op := ALUOpEnum.OR }
+            is("b111".U) { op := ALUOpEnum.AND }
+        }
+        op
+    }
+
+    private def getMemOpWidth(funct3: UInt): MemoryOpWidthEnum.Type = {
+        val width = WireDefault(MemoryOpWidthEnum.WORD)
+        switch(funct3) {
+            is("b000".U) { width := MemoryOpWidthEnum.BYTE }
+            is("b001".U) { width := MemoryOpWidthEnum.HALFWORD }
+            is("b010".U) { width := MemoryOpWidthEnum.WORD }
+            is("b100".U) { width := MemoryOpWidthEnum.BYTE } // LBU
+            is("b101".U) { width := MemoryOpWidthEnum.HALFWORD } // LHU
+        }
+        width
     }
 
     private def checkBranchCondition(funct3: UInt, rs1: UInt, rs2: UInt): Bool = {
@@ -232,22 +261,13 @@ class InstDecoder extends CycleAwareModule {
         val reg1 = WireDefault(0.U(5.W))
         val reg2 = WireDefault(0.U(5.W))
 
-        switch(decoded.opcode) {
-            is("b0110011".U) { // R-Type
+        switch(decoded.instType) {
+            is(common.InstTypeEnum.R_TYPE, common.InstTypeEnum.S_TYPE, common.InstTypeEnum.B_TYPE) {
                 reg1 := decoded.rs1
                 reg2 := decoded.rs2
             }
-            is("b0010011".U, "b0000011".U, "b1100111".U) { // I-Type
+            is(common.InstTypeEnum.I_TYPE) {
                 reg1 := decoded.rs1
-                reg2 := 0.U
-            }
-            is("b0100011".U) { // S-Type
-                reg1 := decoded.rs1
-                reg2 := decoded.rs2
-            }
-            is("b1100011".U) { // B-Type
-                reg1 := decoded.rs1
-                reg2 := decoded.rs2
             }
         }
 

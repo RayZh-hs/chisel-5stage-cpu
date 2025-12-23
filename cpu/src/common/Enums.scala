@@ -15,6 +15,6 @@ object MemoryOpEnum extends ChiselEnum {
     val NONE, READ, WRITE = Value
 }
 
-object WriteBackSrcEnum extends ChiselEnum {
-    val ALU, MEM, PC_PLUS_4 = Value
+object MemoryOpWidthEnum extends ChiselEnum {
+    val BYTE, HALFWORD, WORD = Value
 }

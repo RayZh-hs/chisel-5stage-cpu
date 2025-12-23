@@ -42,28 +42,20 @@ class IdRegCommBundle extends Bundle {
   * 
   * @param aluOp ALU operation to be performed
   * @param memOp Memory operation to be performed
-  * @param op1Src Source of operand 1
-  * @param op2Src Source of operand 2
-  * @param wbSrc Source of data to be written back to the register file
-  * @param regWrite Whether to write back to the register file
-  * @param rs1Data Data from source register 1
-  * @param rs2Data Data from source register 2
-  * @param imm Immediate value extracted from the instruction
-  * @param rdAddr Destination register address
-  * @param pc Program counter value of the instruction
+  * @param aluOp1 First ALU operand
+  * @param aluOp2 Second ALU operand
+  * @param regWriteDest Destination register address for write-back (write to 0 to discard write-back)
+  * @param memWriteData Data to be written to memory (for store instructions)
   */
 class DecodedInstructionBundle extends Bundle {
     val aluOp = ALUOpEnum()
     val memOp = MemoryOpEnum()
-    val wbSrc = WriteBackSrcEnum()
+    val memOpWidth = MemoryOpWidthEnum()
 
-    val regWrite = Bool()
-
-    val rs1Data = UInt(32.W)
-    val rs2Data = UInt(32.W)
-    val imm = UInt(32.W)
-    val rdAddr = UInt(5.W)
-    val pc = UInt(32.W)
+    val aluOp1 = UInt(32.W)
+    val aluOp2 = UInt(32.W)
+    val regWriteDest = UInt(5.W)
+    val memWriteData = UInt(32.W)
 }
 
 object DecodedInstructionBundle {
