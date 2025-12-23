@@ -8,6 +8,7 @@ import common._
 class InstDecoder extends CycleAwareModule {
     val io = IO(new Bundle {
         val inst = Input(UInt(32.W))
+        val pc = Input(UInt(32.W))
         val decodedInst = Output(new DecodedInstructionBundle)
         val regComm = new IdRegCommBundle()
         val invokeStallFrontend = Output(Bool())
@@ -22,6 +23,11 @@ class InstDecoder extends CycleAwareModule {
     private val canForward = WireDefault(false.B)
 
     private val justStalled = io.frontendIsStalled
+
+    io.flushPC.valid := false.B
+    io.flushPC.bits := 0.U
+    io.regComm.markBusy.valid := false.B
+    io.regComm.markBusy.bits := 0.U
 
     when(justStalled) {
         // wait for both of the registers to be free before continuing
@@ -63,7 +69,99 @@ class InstDecoder extends CycleAwareModule {
     when(canForward) {
         // Forward the decoded instruction to EX
         // Handle jumps now to avoid flushing later stages
-        // TODO: Implement jump handling and else passing decoded instruction to the output bundle
+        
+        // Read register values
+        val rs1Val = io.regComm.regAccessParam0.readFrom(internalDecodedInst.rs1)
+        val rs2Val = io.regComm.regAccessParam1.readFrom(internalDecodedInst.rs2)
+
+        // Fill decodedInst data fields
+        io.decodedInst.rs1Data := rs1Val
+        io.decodedInst.rs2Data := rs2Val
+        io.decodedInst.imm := internalDecodedInst.imm
+        io.decodedInst.rdAddr := internalDecodedInst.rd
+        io.decodedInst.pc := io.pc
+
+        // Default control signals
+        io.decodedInst.aluOp := ALUOpEnum.ADD 
+        io.decodedInst.memOp := MemoryOpEnum.NONE
+        io.decodedInst.wbSrc := WriteBackSrcEnum.ALU
+        io.decodedInst.regWrite := false.B
+
+        // Determine regWrite and other signals based on opcode
+        switch(internalDecodedInst.opcode) {
+            is("b0110011".U) { // R-Type
+                io.decodedInst.regWrite := true.B
+            }
+            is("b0010011".U) { // I-Type (ALU)
+                io.decodedInst.regWrite := true.B
+            }
+            is("b0000011".U) { // Load
+                io.decodedInst.memOp := MemoryOpEnum.READ
+                io.decodedInst.wbSrc := WriteBackSrcEnum.MEM
+                io.decodedInst.regWrite := true.B
+            }
+            is("b0100011".U) { // Store
+                io.decodedInst.memOp := MemoryOpEnum.WRITE
+            }
+            is("b1100011".U) { // Branch
+                // No reg write
+            }
+            is("b0110111".U) { // LUI
+                io.decodedInst.regWrite := true.B
+                io.decodedInst.rs1Data := 0.U
+            }
+            is("b0010111".U) { // AUIPC
+                io.decodedInst.regWrite := true.B
+                io.decodedInst.rs1Data := io.pc
+            }
+            is("b1101111".U) { // JAL
+                io.decodedInst.wbSrc := WriteBackSrcEnum.PC_PLUS_4
+                io.decodedInst.regWrite := true.B
+            }
+            is("b1100111".U) { // JALR
+                io.decodedInst.wbSrc := WriteBackSrcEnum.PC_PLUS_4
+                io.decodedInst.regWrite := true.B
+            }
+        }
+
+        // Mark register as busy
+        when(io.decodedInst.regWrite && internalDecodedInst.rd =/= 0.U) {
+            io.regComm.markBusy.valid := true.B
+            io.regComm.markBusy.bits := internalDecodedInst.rd
+        }
+
+        // Handle Jumps
+        val isJal = internalDecodedInst.opcode === "b1101111".U
+        val isJalr = internalDecodedInst.opcode === "b1100111".U
+        val isBranch = internalDecodedInst.opcode === "b1100011".U
+        val isAuipc = internalDecodedInst.opcode === "b0010111".U
+
+        when(isJal) {
+            io.flushPC.valid := true.B
+            io.flushPC.bits := io.pc + internalDecodedInst.imm
+            io.invokeStallFrontend := true.B
+        } .elsewhen(isJalr) {
+            io.flushPC.valid := true.B
+            io.flushPC.bits := (rs1Val + internalDecodedInst.imm) & ~1.U(32.W)
+            io.invokeStallFrontend := true.B
+        } .elsewhen(isBranch && checkBranchCondition(internalDecodedInst.funct3, rs1Val, rs2Val)) {
+            io.flushPC.valid := true.B
+            io.flushPC.bits := io.pc + internalDecodedInst.imm
+            io.invokeStallFrontend := true.B
+        }
+    }
+
+    private def checkBranchCondition(funct3: UInt, rs1: UInt, rs2: UInt): Bool = {
+        val conditionMet = WireDefault(false.B)
+        switch(funct3) {
+            is("b000".U) { conditionMet := rs1 === rs2 } // BEQ
+            is("b001".U) { conditionMet := rs1 =/= rs2 } // BNE
+            is("b100".U) { conditionMet := rs1.asSInt < rs2.asSInt } // BLT
+            is("b101".U) { conditionMet := rs1.asSInt >= rs2.asSInt } // BGE
+            is("b110".U) { conditionMet := rs1 < rs2 } // BLTU
+            is("b111".U) { conditionMet := rs1 >= rs2 } // BGEU
+        }
+        conditionMet
     }
 
     private def getDecodedInst(inst: UInt): InternalDecodedInstBundle = {

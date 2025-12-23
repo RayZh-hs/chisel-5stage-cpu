@@ -18,6 +18,7 @@ class RV32ICore(val hexFile: String) extends Module {
     // - IF/ID Memory Access (Handled via instruction memory)
     instMemory.io.addr := instFetcher.io.instMemoryReadAddr
     instDecoder.io.inst := instMemory.io.inst
+    instDecoder.io.pc := RegNext(instFetcher.io.instMemoryReadAddr)
     // - Frontend Interleaving
     instFetcher.io.pcOverwrite <> RegNext(instDecoder.io.flushPC)
     // - ID Stage Register File Access

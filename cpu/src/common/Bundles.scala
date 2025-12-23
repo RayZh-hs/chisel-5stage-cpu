@@ -12,8 +12,8 @@ import chisel3.util._
   * @param dataBits The number of bits for the data
   */
 class RequestReturnBundle(val addrBits: Int, val dataBits: Int) extends Bundle {
-    val addr = UInt(addrBits.W)
-    val data = UInt(dataBits.W)
+    val addr = Output(UInt(addrBits.W))
+    val data = Input(UInt(dataBits.W))
 
     def readFrom(addr: UInt): UInt = {
         this.addr := addr
@@ -29,6 +29,7 @@ class IdRegCommBundle extends Bundle {
     val regOccupiedParam1 = new RequestReturnBundle(addrBits = 5, dataBits = 1)
     val regAccessParam0 = new RequestReturnBundle(addrBits = 5, dataBits = 32)
     val regAccessParam1 = new RequestReturnBundle(addrBits = 5, dataBits = 32)
+    val markBusy = Output(Valid(UInt(5.W)))
 }
 
 /**
