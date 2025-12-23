@@ -52,6 +52,11 @@ class InstDecoder extends CycleAwareModule {
             regOccupiedRecord0 := Mux(isOccupied0, criticalReg1, 0.U)
             regOccupiedRecord1 := Mux(isOccupied1, criticalReg2, 0.U)
             canForward := !(isOccupied0 || isOccupied1)
+        }.otherwise {
+            // if just stalled and is no longer busy, this means the registers are now free
+            regOccupiedRecord0 := 0.U
+            regOccupiedRecord1 := 0.U
+            canForward := true.B
         }
     }
 
