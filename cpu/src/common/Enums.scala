@@ -6,3 +6,15 @@ import chisel3.util._
 object InstTypeEnum extends ChiselEnum {
     val R_TYPE, I_TYPE, S_TYPE, B_TYPE, U_TYPE, J_TYPE = Value
 }
+
+object ALUOpEnum extends ChiselEnum {
+    val ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, NOP = Value
+}
+
+object MemoryOpEnum extends ChiselEnum {
+    val NONE, READ, WRITE = Value
+}
+
+object WriteBackSrcEnum extends ChiselEnum {
+    val ALU, MEM, PC_PLUS_4 = Value
+}

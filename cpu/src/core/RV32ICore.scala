@@ -15,10 +15,13 @@ class RV32ICore(val hexFile: String) extends Module {
     val executor = Module(new Executor)
 
     // Connect Components
-    // - IF Stage
+    // - IF/ID Memory Access (Handled via instruction memory)
     instMemory.io.addr := instFetcher.io.instMemoryReadAddr
-    // - IF/ID Pipeline
-    instDecoder.io.inst := RegNext(instFetcher.io.fetchedInst)
+    instDecoder.io.inst := instMemory.io.inst
+    // - Frontend Interleaving
+    instFetcher.io.pcOverwrite <> RegNext(instDecoder.io.flushPC)
+    // - ID Stage Register File Access
+    instDecoder.io.regComm <> regFile.io.idComm
     // - ID/EX Pipeline
     executor.io.decodedInst := RegNext(instDecoder.io.decodedInst)
 }

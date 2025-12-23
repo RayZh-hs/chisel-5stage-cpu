@@ -6,6 +6,6 @@ import utility._
 
 class Executor extends CycleAwareModule {
     val io = IO(new Bundle {
-        val decodedInst = Input(new common.DecodedInstBundle)
+        val decodedInst = Input(new common.DecodedInstructionBundle)
     })
 }
