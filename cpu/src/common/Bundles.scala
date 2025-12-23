@@ -58,6 +58,13 @@ class DecodedInstructionBundle extends Bundle {
     val memWriteData = UInt(32.W)
 }
 
+class ExOutBundle extends Bundle {
+    val resultOrAddr = UInt(32.W)
+    val memOp = MemoryOpEnum()
+    val wdReg = UInt(5.W)
+    val memWriteData = UInt(32.W)
+}
+
 object DecodedInstructionBundle {
     def ofNoop(): DecodedInstructionBundle = {
         val bundle = WireDefault(0.U.asTypeOf(new DecodedInstructionBundle))
