@@ -8,6 +8,8 @@ import common._
 class RegisterFile extends Module {
     val io = IO(new Bundle {
         val idComm = Flipped(new IdRegCommBundle)
+        val rbReg = Input(UInt(5.W))
+        val rbValue = Input(UInt(32.W))
     })
 
     // In chisel, Mem elaborates to a register bank
@@ -30,11 +32,18 @@ class RegisterFile extends Module {
         }
     }
 
+    // Writeback port
+    when(io.rbReg =/= 0.U) {
+        sanitizeAddr(io.rbReg)
+        regFile.write(io.rbReg, io.rbValue)
+    }
+
     // todo: generate per-cycle write for scoreboard updates
     for (i <- 1 until 32) {
         val incHit = sbBookeep.sbIncr0 === i.U
+        val decHit = (io.rbReg === i.U)
 
-        scoreboard.write(i.U, scoreboard(i.U) + incHit.asUInt)
+        scoreboard.write(i.U, scoreboard(i.U) + incHit.asUInt - decHit.asUInt)
     }
 
     private def sanitizeAddr(addr: UInt): Unit = {
