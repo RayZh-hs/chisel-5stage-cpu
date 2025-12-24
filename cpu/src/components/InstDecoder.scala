@@ -31,8 +31,8 @@ class InstDecoder extends CycleAwareModule {
 
     when(justStalled) {
         // wait for both of the registers to be free before continuing
-        val recordStall0 = io.regComm.regOccupiedParam0.readFrom(regOccupiedRecord0).asBool
-        val recordStall1 = io.regComm.regOccupiedParam1.readFrom(regOccupiedRecord1).asBool
+        val recordStall0 = io.regComm.scoreboardParam0.readFrom(regOccupiedRecord0).asBool
+        val recordStall1 = io.regComm.scoreboardParam1.readFrom(regOccupiedRecord1).asBool
         isBusy := recordStall0 || recordStall1
     } .otherwise {
         isBusy := false.B
@@ -53,8 +53,8 @@ class InstDecoder extends CycleAwareModule {
         // Identify hazards
         val (criticalReg1, criticalReg2) = getCriticalRegisters(internalDecodedInst)
         when(!justStalled) {
-            val isOccupied0 = io.regComm.regOccupiedParam0.readFrom(criticalReg1).asBool
-            val isOccupied1 = io.regComm.regOccupiedParam1.readFrom(criticalReg2).asBool
+            val isOccupied0 = io.regComm.scoreboardParam0.readFrom(criticalReg1).asBool
+            val isOccupied1 = io.regComm.scoreboardParam1.readFrom(criticalReg2).asBool
             regOccupiedRecord0 := Mux(isOccupied0, criticalReg1, 0.U)
             regOccupiedRecord1 := Mux(isOccupied1, criticalReg2, 0.U)
             canForward := !(isOccupied0 || isOccupied1)

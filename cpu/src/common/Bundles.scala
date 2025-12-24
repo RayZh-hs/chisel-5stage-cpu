@@ -25,8 +25,8 @@ class RequestReturnBundle(val addrBits: Int, val dataBits: Int) extends Bundle {
 
 // Communication bundle between ID and REG stages
 class IdRegCommBundle extends Bundle {
-    val regOccupiedParam0 = new RequestReturnBundle(addrBits = 5, dataBits = 1)
-    val regOccupiedParam1 = new RequestReturnBundle(addrBits = 5, dataBits = 1)
+    val scoreboardParam0 = new RequestReturnBundle(addrBits = 5, dataBits = 1)
+    val scoreboardParam1 = new RequestReturnBundle(addrBits = 5, dataBits = 1)
     val regAccessParam0 = new RequestReturnBundle(addrBits = 5, dataBits = 32)
     val regAccessParam1 = new RequestReturnBundle(addrBits = 5, dataBits = 32)
     val markBusy = Output(Valid(UInt(5.W)))

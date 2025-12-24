@@ -12,18 +12,29 @@ class RegisterFile extends Module {
 
     // In chisel, Mem elaborates to a register bank
     val regFile = Mem(32, UInt(32.W))
-    val regOccupied = Mem(32, Bool())
+    val scoreboard = Mem(32, UInt(2.W)) // Can be 0, 1, 2, 3, where 0 is free
+
+    val sbBookeep = new Bundle {
+        val sbIncr0 = WireDefault(0.U(5.W))
+    }
 
     // Wire the ports
     io.idComm.tap { it =>
-        it.regOccupiedParam0.data := regOccupied.read(it.regOccupiedParam0.addr)
-        it.regOccupiedParam1.data := regOccupied.read(it.regOccupiedParam1.addr)
+        it.scoreboardParam0.data := scoreboard.read(it.scoreboardParam0.addr)
+        it.scoreboardParam1.data := scoreboard.read(it.scoreboardParam1.addr)
         it.regAccessParam0.data := regFile.read(it.regAccessParam0.addr)
         it.regAccessParam1.data := regFile.read(it.regAccessParam1.addr)
 
         when(it.markBusy.valid) {
-            regOccupied.write(it.markBusy.bits, true.B)
+            sbBookeep.sbIncr0 := it.markBusy.bits
         }
+    }
+
+    // todo: generate per-cycle write for scoreboard updates
+    for (i <- 1 until 32) {
+        val incHit = sbBookeep.sbIncr0 === i.U
+
+        scoreboard.write(i.U, scoreboard(i.U) + incHit.asUInt)
     }
 
     private def sanitizeAddr(addr: UInt): Unit = {
