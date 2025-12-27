@@ -18,3 +18,7 @@ object MemoryOpEnum extends ChiselEnum {
 object MemoryOpWidthEnum extends ChiselEnum {
     val BYTE, HALFWORD, WORD = Value
 }
+
+object ControlOpEnum extends ChiselEnum {
+    val NONE, BEQ, BNE, BLT, BGE, BLTU, BGEU, JAL, JALR = Value
+}

@@ -3,36 +3,33 @@ package components
 import chisel3._
 import chisel3.util._
 import utility._
-import common.Constants
+import common._
+import components.InstMemory
 
-class InstFetcher extends CycleAwareModule {
-    private def isBranchInstruction(inst: UInt): Bool = {
-        val opcode = inst(6, 0)
-        return (opcode | ~"b1100011".U) === "b1111111".U
-    }
 
+class InstFetcher(mem: InstMemory) extends CycleAwareModule {
     val io = IO(new Bundle {
-        // PC end stall endpoint
-        val frontendStall = Input(Bool())
-        val pcOverwrite = Input(Valid(UInt(32.W)))
+        // PC overwrite logic
+        val pcOverwrite = Input(Valid(UInt(32.W))) // Note: this will be high with 0 when startup
 
-        // InstMemory read interface
-        val instMemoryReadAddr = Output(UInt(32.W))
+        // Inst outputs
+        val ifOut = Output(Decoupled(new IfOutBundle()))
     })
-    val pc = RegInit(0.U(32.W))
-
+    val pc = Reg(UInt(32.W))
     val nextPc = Wire(UInt(32.W))
-    when (io.frontendStall) {
-        printf("[%d] (InstFetcher) FE Stalled at PC = 0x%x\n", cycleCount, pc)
-        nextPc := pc
-    } .elsewhen (io.pcOverwrite.valid) {
-        printf("[%d] (InstFetcher) PC Overwrite to 0x%x\n", cycleCount, io.pcOverwrite.bits)
-        nextPc := io.pcOverwrite.bits
-    } .otherwise {
-        printf("[%d] (InstFetcher) PC Increment to 0x%x\n", cycleCount, pc + 4.U)
-        nextPc := pc + 4.U
-    }
 
+    when (io.pcOverwrite.valid) {
+        nextPc := io.pcOverwrite.bits
+    } .elsewhen (!io.ifOut.ready) {
+        nextPc := pc                 
+    }.otherwise {
+        nextPc := pc + 4.U           
+    }
     pc := nextPc
-    io.instMemoryReadAddr := nextPc
+    mem.io.addr := nextPc // ready the inst of the pc output next cycle
+
+    // Output logic, aligned to next cycle
+    io.ifOut.bits.pc := pc
+    io.ifOut.bits.inst := mem.io.inst // 1 cycle latency read
+    io.ifOut.valid := !io.pcOverwrite.valid  // not valid if pc is overwritten this cycle(during flush)
 }

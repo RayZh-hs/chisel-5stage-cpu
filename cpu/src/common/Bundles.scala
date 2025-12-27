@@ -42,27 +42,30 @@ class IdRegCommBundle extends Bundle {
   * 
   * @param aluOp ALU operation to be performed
   * @param memOp Memory operation to be performed
-  * @param aluOp1 First ALU operand
-  * @param aluOp2 Second ALU operand
   * @param regWriteDest Destination register address for write-back (write to 0 to discard write-back)
   * @param memWriteData Data to be written to memory (for store instructions)
   */
 class DecodedInstructionBundle extends Bundle {
     val aluOp = ALUOpEnum()
     val memOp = MemoryOpEnum()
+    val branchOp = ControlOpEnum()
     val memOpWidth = MemoryOpWidthEnum()
 
-    val aluOp1 = UInt(32.W)
-    val aluOp2 = UInt(32.W)
+    // for alu, it is op1 and op2
+    // for memory, op1 is base addr, op2 is write data
+    // for branch, op1 and op2 are compared, pc is branch target
+    val op1 = UInt(32.W)
+    val op2 = UInt(32.W)
     val regWriteDest = UInt(5.W)
-    val memWriteData = UInt(32.W)
+    val pc = UInt(32.W)
+    val imm = UInt(32.W)
 }
 
 class ExOutBundle extends Bundle {
-    val resultOrAddr = UInt(32.W)
+    val resultOrAddr = UInt(32.W) // ALU Result
     val memOp = MemoryOpEnum()
-    val wdReg = UInt(5.W)
     val memWriteData = UInt(32.W)
+    val wdReg = UInt(5.W)
 }
 
 object DecodedInstructionBundle {
@@ -70,4 +73,14 @@ object DecodedInstructionBundle {
         val bundle = WireDefault(0.U.asTypeOf(new DecodedInstructionBundle))
         bundle
     }
+}
+
+class MemWbBundle extends Bundle {
+    val data = UInt(32.W)
+    val wbReg = UInt(5.W)
+}
+
+class IfOutBundle extends Bundle {
+    val pc = UInt(32.W)
+    val inst = UInt(32.W)
 }

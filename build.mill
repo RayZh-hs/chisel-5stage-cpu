@@ -15,4 +15,16 @@ object cpu extends ScalaModule {
   )
 
   override def sources = T.sources(millSourcePath / "src")
+
+  object test extends ScalaTests {
+    def testFramework = "org.scalatest.tools.Framework"
+    
+    override def ivyDeps = Agg(
+      ivy"org.scalatest::scalatest:3.2.18"
+    )
+
+    override def scalacPluginIvyDeps = Agg(
+      ivy"org.chipsalliance:chisel-plugin_2.13.18:7.4.0"
+    )
+  }
 }

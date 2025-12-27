@@ -7,13 +7,11 @@ import common._
 
 class InstDecoder extends CycleAwareModule {
     val io = IO(new Bundle {
-        val inst = Input(UInt(32.W))
-        val pc = Input(UInt(32.W))
-        val decodedInst = Output(new DecodedInstructionBundle)
+        val ifInput = Input(Decoupled(new IfOutBundle()))
+
         val regComm = new IdRegCommBundle()
-        val invokeStallFrontend = Output(Bool())
-        val frontendIsStalled = Input(Bool())
-        val flushPC = Output(Valid(UInt(32.W)))
+
+        val decodedInst = Output(new DecodedInstructionBundle)
     })
 
     private val internalDecodedInst = WireDefault(0.U.asTypeOf(new InternalDecodedInstBundle))
@@ -30,41 +28,30 @@ class InstDecoder extends CycleAwareModule {
     io.regComm.markBusy.bits := 0.U
 
     when(justStalled) {
-        // wait for both of the registers to be free before continuing
         val recordStall0 = io.regComm.scoreboardParam0.readFrom(regOccupiedRecord0).asBool
         val recordStall1 = io.regComm.scoreboardParam1.readFrom(regOccupiedRecord1).asBool
         isBusy := recordStall0 || recordStall1
-    } .otherwise {
-        isBusy := false.B
-    }
-
-    when(isBusy) {
-        io.invokeStallFrontend := true.B
         canForward := false.B
-
-        // Send empty response to backend
-        io.decodedInst := DecodedInstructionBundle.ofNoop()
     } .otherwise {
-        io.invokeStallFrontend := false.B
+        io.ready := false.B
         
-        // Decode instruction
         internalDecodedInst := getDecodedInst(io.inst)
 
-        // Identify hazards
         val (criticalReg1, criticalReg2) = getCriticalRegisters(internalDecodedInst)
-        when(!justStalled) {
-            val isOccupied0 = io.regComm.scoreboardParam0.readFrom(criticalReg1).asBool
-            val isOccupied1 = io.regComm.scoreboardParam1.readFrom(criticalReg2).asBool
-            regOccupiedRecord0 := Mux(isOccupied0, criticalReg1, 0.U)
-            regOccupiedRecord1 := Mux(isOccupied1, criticalReg2, 0.U)
-            canForward := !(isOccupied0 || isOccupied1)
-        }.otherwise {
-            // if just stalled and is no longer busy, this means the registers are now free
-            regOccupiedRecord0 := 0.U
-            regOccupiedRecord1 := 0.U
-            canForward := true.B
-        }
+        
+        val isOccupied0 = io.regComm.scoreboardParam0.readFrom(criticalReg1).asBool
+        val isOccupied1 = io.regComm.scoreboardParam1.readFrom(criticalReg2).asBool
+        
+        regOccupiedRecord0 := Mux(isOccupied0, criticalReg1, 0.U)
+        regOccupiedRecord1 := Mux(isOccupied1, criticalReg2, 0.U)
+        
+        val hazardDetected = isOccupied0 || isOccupied1
+        
+        isBusy := hazardDetected
+        canForward := !hazardDetected
     }
+
+    io.ready := isBusy
 
     when(canForward) {
         // Forward the decoded instruction to EX
@@ -78,8 +65,8 @@ class InstDecoder extends CycleAwareModule {
         io.decodedInst.aluOp := ALUOpEnum.ADD
         io.decodedInst.memOp := MemoryOpEnum.NONE
         io.decodedInst.memOpWidth := MemoryOpWidthEnum.WORD
-        io.decodedInst.aluOp1 := rs1Val
-        io.decodedInst.aluOp2 := internalDecodedInst.imm
+        io.decodedInst.op1 := rs1Val
+        io.decodedInst.op2 := internalDecodedInst.imm
         io.decodedInst.regWriteDest := internalDecodedInst.rd
         io.decodedInst.memWriteData := 0.U
 
@@ -87,7 +74,7 @@ class InstDecoder extends CycleAwareModule {
         switch(internalDecodedInst.opcode) {
             is("b0110011".U) { // R-Type
                 io.decodedInst.aluOp := getALUOp(internalDecodedInst.funct3, internalDecodedInst.funct7, true.B)
-                io.decodedInst.aluOp2 := rs2Val
+                io.decodedInst.op2 := rs2Val
             }
             is("b0010011".U) { // I-Type (ALU)
                 io.decodedInst.aluOp := getALUOp(internalDecodedInst.funct3, internalDecodedInst.funct7, false.B)
@@ -106,18 +93,18 @@ class InstDecoder extends CycleAwareModule {
                 io.decodedInst.regWriteDest := 0.U
             }
             is("b0110111".U) { // LUI
-                io.decodedInst.aluOp1 := 0.U
+                io.decodedInst.op1 := 0.U
             }
             is("b0010111".U) { // AUIPC
-                io.decodedInst.aluOp1 := io.pc
+                io.decodedInst.op1 := io.pc
             }
             is("b1101111".U) { // JAL
-                io.decodedInst.aluOp1 := io.pc
-                io.decodedInst.aluOp2 := 4.U
+                io.decodedInst.op1 := io.pc
+                io.decodedInst.op2 := 4.U
             }
             is("b1100111".U) { // JALR
-                io.decodedInst.aluOp1 := io.pc
-                io.decodedInst.aluOp2 := 4.U
+                io.decodedInst.op1 := io.pc
+                io.decodedInst.op2 := 4.U
             }
         }
 
@@ -145,6 +132,8 @@ class InstDecoder extends CycleAwareModule {
             io.flushPC.bits := io.pc + internalDecodedInst.imm
             io.invokeStallFrontend := true.B
         }
+    }.otherwise {
+        io.decodedInst := DecodedInstructionBundle.ofNoop()
     }
 
     private def getALUOp(funct3: UInt, funct7: UInt, isRType: Bool): ALUOpEnum.Type = {
