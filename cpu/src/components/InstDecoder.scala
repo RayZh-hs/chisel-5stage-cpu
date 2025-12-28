@@ -17,6 +17,11 @@ class InstDecoder extends CycleAwareModule {
         val decodedInst = Output(new DecodedInstructionBundle)
     })
 
+    io.regComm.scoreboardParam0.addr := 0.U
+    io.regComm.scoreboardParam1.addr := 0.U
+    io.regComm.regAccessParam0.addr := 0.U
+    io.regComm.regAccessParam1.addr := 0.U
+
     val inst = io.ifInput.bits.inst
     val pc   = io.ifInput.bits.pc
 

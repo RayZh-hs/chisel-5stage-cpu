@@ -15,6 +15,7 @@ class Executor extends CycleAwareModule {
     io.exOut.resultOrAddr := 0.U 
     io.exOut.memBundle.memOp        := io.decodedInst.memOp
     io.exOut.memBundle.memOpWidth   := io.decodedInst.memOpWidth
+    io.exOut.memBundle.memWriteData := 0.U
     io.exOut.wdReg        := io.decodedInst.regWriteDest
     
     io.jumpTo.valid       := false.B

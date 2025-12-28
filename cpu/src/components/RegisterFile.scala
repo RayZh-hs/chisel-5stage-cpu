@@ -22,10 +22,10 @@ class RegisterFile extends Module {
 
     // Wire the ports
     io.idComm.tap { it =>
-        it.scoreboardParam0.data := scoreboard(it.scoreboardParam0.addr)
-        it.scoreboardParam1.data := scoreboard(it.scoreboardParam1.addr)
-        it.regAccessParam0.data := regFile.read(it.regAccessParam0.addr)
-        it.regAccessParam1.data := regFile.read(it.regAccessParam1.addr)
+        it.scoreboardParam0.data := Mux(it.scoreboardParam0.addr === 0.U, 0.U, scoreboard(it.scoreboardParam0.addr))
+        it.scoreboardParam1.data := Mux(it.scoreboardParam1.addr === 0.U, 0.U, scoreboard(it.scoreboardParam1.addr))
+        it.regAccessParam0.data := Mux(it.regAccessParam0.addr === 0.U, 0.U, regFile.read(it.regAccessParam0.addr))
+        it.regAccessParam1.data := Mux(it.regAccessParam1.addr === 0.U, 0.U, regFile.read(it.regAccessParam1.addr))
 
         when(it.markBusy.valid) {
             sbBookeep.sbIncr0 := it.markBusy.bits

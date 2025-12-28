@@ -12,6 +12,14 @@ class InstMemory(hexFile: String) extends Module {
     })
     
 
-    chisel3.assert(io.addr(1,0) === 0.U, "InstMemory address must be word-aligned")
-    chisel3.assert(io.addr < (Constants.instMemorySize * 4).U, "InstMemory address out of bounds")
+    // when(!reset.asBool) {
+    //     chisel3.assert(io.addr(1,0) === 0.U, "InstMemory address must be word-aligned")
+    //     chisel3.assert(io.addr < (Constants.instMemorySize * 4).U, "InstMemory address out of bounds")
+    // }
+
+    val mem = SyncReadMem(Constants.instMemorySize, UInt(32.W))
+    if (hexFile.nonEmpty) {
+        loadMemoryFromFile(mem, hexFile)
+    }
+    io.inst := mem.read(io.addr >> 2)
 }

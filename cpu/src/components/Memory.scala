@@ -17,9 +17,10 @@ class Memory extends Module {
         mem.write(wordAddr, io.exResult.memBundle.memWriteData)
     }
 
-    io.wbBundle.data := Mux(io.exResult.memBundle.memOp === MemoryOpEnum.READ, 
+    val delayResultOrAddr = RegNext(io.exResult.resultOrAddr)
+    io.wbBundle.data := Mux(RegNext(io.exResult.memBundle.memOp === MemoryOpEnum.READ), 
                             readData, 
-                            io.exResult.resultOrAddr) // also 1 cycle latency
+                            delayResultOrAddr)
     // delay the wbReg by 1 cycle to match read data latency
     val delayWbReg = RegNext(io.exResult.wdReg)
     io.wbBundle.wbReg := delayWbReg
