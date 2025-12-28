@@ -61,10 +61,15 @@ class DecodedInstructionBundle extends Bundle {
     val imm = UInt(32.W)
 }
 
+class memOpBundle extends Bundle {
+    val memOp = MemoryOpEnum()
+    val memOpWidth = MemoryOpWidthEnum()
+    val memWriteData = UInt(32.W)
+}
+
 class ExOutBundle extends Bundle {
     val resultOrAddr = UInt(32.W) // ALU Result
-    val memOp = MemoryOpEnum()
-    val memWriteData = UInt(32.W)
+    val memBundle = new memOpBundle()
     val wdReg = UInt(5.W)
 }
 

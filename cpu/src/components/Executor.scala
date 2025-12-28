@@ -13,8 +13,8 @@ class Executor extends CycleAwareModule {
     })
 
     io.exOut.resultOrAddr := 0.U 
-    io.exOut.memOp        := io.decodedInst.memOp
-    io.exOut.memWriteData := io.decodedInst.op2
+    io.exOut.memBundle.memOp        := io.decodedInst.memOp
+    io.exOut.memBundle.memOpWidth   := io.decodedInst.memOpWidth
     io.exOut.wdReg        := io.decodedInst.regWriteDest
     
     io.jumpTo.valid       := false.B
@@ -34,6 +34,8 @@ class Executor extends CycleAwareModule {
         is(ALUOpEnum.SRA) { aluResult := (io.decodedInst.op1.asSInt >> io.decodedInst.op2(4,0)).asUInt }
         is(ALUOpEnum.SLT) { aluResult := Mux(io.decodedInst.op1.asSInt < io.decodedInst.op2.asSInt, 1.U, 0.U) }
         is(ALUOpEnum.SLTU){ aluResult := Mux(io.decodedInst.op1 < io.decodedInst.op2, 1.U, 0.U) }
+        is(ALUOpEnum.LUI) { aluResult := io.decodedInst.imm << 12 }
+        is(ALUOpEnum.AUIPC) { aluResult := io.decodedInst.pc + (io.decodedInst.imm << 12) }
     }
 
     val branchTarget = io.decodedInst.pc + io.decodedInst.imm
@@ -64,5 +66,8 @@ class Executor extends CycleAwareModule {
         io.exOut.resultOrAddr := io.decodedInst.op1 + io.decodedInst.imm
     }.otherwise {
         io.exOut.resultOrAddr := aluResult
+    }
+    when(io.decodedInst.memOp =/= MemoryOpEnum.NONE) {
+        io.exOut.memBundle.memWriteData := io.decodedInst.op2
     }
 }

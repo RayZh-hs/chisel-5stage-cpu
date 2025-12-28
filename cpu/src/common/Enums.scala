@@ -8,7 +8,7 @@ object InstTypeEnum extends ChiselEnum {
 }
 
 object ALUOpEnum extends ChiselEnum {
-    val ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, NOP = Value
+    val ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, NOP, LUI, AUIPC = Value
 }
 
 object MemoryOpEnum extends ChiselEnum {

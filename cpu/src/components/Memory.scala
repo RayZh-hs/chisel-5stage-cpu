@@ -13,11 +13,11 @@ class Memory extends Module {
     val mem = SyncReadMem(Constants.memorySize, UInt(32.W))
     val wordAddr = io.exResult.resultOrAddr(31, 2)
     val readData = mem.read(wordAddr)// 1 cycle latency
-    when(io.exResult.memOp === MemoryOpEnum.WRITE) {
-        mem.write(wordAddr, io.exResult.memWriteData)
+    when(io.exResult.memBundle.memOp === MemoryOpEnum.WRITE) {
+        mem.write(wordAddr, io.exResult.memBundle.memWriteData)
     }
 
-    io.wbBundle.data := Mux(io.exResult.memOp === MemoryOpEnum.READ, 
+    io.wbBundle.data := Mux(io.exResult.memBundle.memOp === MemoryOpEnum.READ, 
                             readData, 
                             io.exResult.resultOrAddr) // also 1 cycle latency
     // delay the wbReg by 1 cycle to match read data latency

@@ -12,7 +12,7 @@ class WriteBack extends Module {
         val wbReg = Output(UInt(5.W))
     })
 
-    when(io.exResult.memOp === common.MemoryOpEnum.READ) {
+    when(io.exResult.memBundle.memOp === common.MemoryOpEnum.READ) {
         io.wbData := io.memReadData
     } .otherwise {
         io.wbData := io.exResult.resultOrAddr
