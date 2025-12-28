@@ -20,20 +20,22 @@ class InstFetcher extends CycleAwareModule {
         val instData = Input(UInt(32.W))
     })
     val pc = RegInit(0.U(32.W))
-    val nextPc = Wire(UInt(32.W))
+    val fetchingPc = RegInit(0.U(32.W))
+    val valid = RegInit(false.B)
+
+    io.instAddr := pc
 
     when (io.pcOverwrite.valid) {
-        nextPc := io.pcOverwrite.bits
-    } .elsewhen (!io.ifOut.ready) {
-        nextPc := pc                 
-    }.otherwise {
-        nextPc := pc + 4.U           
+        pc := io.pcOverwrite.bits
+        valid := false.B
+    } .elsewhen (io.ifOut.ready) {
+        pc := pc + 4.U
+        fetchingPc := pc
+        valid := true.B
     }
-    pc := nextPc
-    io.instAddr := nextPc // ready the inst of the pc output next cycle
 
     // Output logic, aligned to next cycle
-    io.ifOut.bits.pc := pc
+    io.ifOut.bits.pc := fetchingPc
     io.ifOut.bits.inst := io.instData // 1 cycle latency read
-    io.ifOut.valid := !io.pcOverwrite.valid  // not valid if pc is overwritten this cycle(during flush)
+    io.ifOut.valid := valid && !io.pcOverwrite.valid 
 }

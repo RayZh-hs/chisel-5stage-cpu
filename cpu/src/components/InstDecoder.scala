@@ -74,9 +74,8 @@ class InstDecoder extends CycleAwareModule {
             decoded.op2 := rs2Data
         }.otherwise {
             // I-Type ALU, Loads, JALR, etc.
-            decoded.op2 := Mux(isStore, immS, 
-                           Mux(isLui || isAuipc, immU,
-                           Mux(isJal, immJ, immI))) // Default to I-immediate
+            decoded.op2 := Mux(isLui || isAuipc, immU,
+                           Mux(isJal, immJ, immI)) // Default to I-immediate
         }
 
         when(isStore)     { decoded.imm := immS }
@@ -90,7 +89,7 @@ class InstDecoder extends CycleAwareModule {
         when(isRType) {
             decoded.aluOp := getALUOp(funct3, funct7, true.B)
         }.elsewhen(isIType) {
-            decoded.aluOp := getALUOp(funct3, 0.U, false.B) // I-Type ignores funct7 usually
+            decoded.aluOp := getALUOp(funct3, funct7, false.B) 
         }.elsewhen(isLui) {
             decoded.aluOp := ALUOpEnum.LUI
         }.elsewhen(isAuipc) {
@@ -107,6 +106,7 @@ class InstDecoder extends CycleAwareModule {
         when(isLoad) {
             decoded.memOp := MemoryOpEnum.READ
             decoded.memOpWidth := getMemOpWidth(funct3)
+            decoded.memReadSigned := !funct3(2)
         }.elsewhen(isStore) {
             decoded.memOp := MemoryOpEnum.WRITE
             decoded.memOpWidth := getMemOpWidth(funct3)

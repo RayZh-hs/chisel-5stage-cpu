@@ -50,6 +50,7 @@ class DecodedInstructionBundle extends Bundle {
     val memOp = MemoryOpEnum()
     val branchOp = ControlOpEnum()
     val memOpWidth = MemoryOpWidthEnum()
+    val memReadSigned = Bool()
 
     // for alu, it is op1 and op2
     // for memory, op1 is base addr, op2 is write data
@@ -64,6 +65,7 @@ class DecodedInstructionBundle extends Bundle {
 class memOpBundle extends Bundle {
     val memOp = MemoryOpEnum()
     val memOpWidth = MemoryOpWidthEnum()
+    val memReadSigned = Bool()
     val memWriteData = UInt(32.W)
 }
 
