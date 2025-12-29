@@ -115,10 +115,10 @@ class CProgramSpec extends AnyFunSuite {
         val expected = readExpected(name)
         val hex = buildHexFor(cFile)
 
-        val res = core.Runner.run(hex.toString, maxCycles = 5000, verbose = false)
+        val res = core.Runner.run(hex.toString, maxCycles = 400, verbose = true)
         res.exitCode match {
           case Some(code) => assert(code == expected, s"$name exit code mismatch")
-          case None       => fail(s"$name timed out after ${res.cycles} cycles")
+          case None       => fail(s"$name timed out after ${res.cycles} cycl`es")
         }
       }
     }

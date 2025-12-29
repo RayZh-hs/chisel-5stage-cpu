@@ -6,12 +6,10 @@ import utility._
 import common._
 import components.InstMemory
 
-
 class InstFetcher extends CycleAwareModule {
     val io = IO(new Bundle {
         // PC overwrite logic
-        val pcOverwrite = Input(Valid(UInt(32.W))) // Note: this will be high with 0 when startup
-
+        val pcOverwrite = Input(Valid(UInt(32.W))) 
         // Inst outputs
         val ifOut = Decoupled(new IfOutBundle())
 
@@ -19,23 +17,32 @@ class InstFetcher extends CycleAwareModule {
         val instAddr = Output(UInt(32.W))
         val instData = Input(UInt(32.W))
     })
+
     val pc = RegInit(0.U(32.W))
-    val fetchingPc = RegInit(0.U(32.W))
-    val valid = RegInit(false.B)
 
-    io.instAddr := pc
+    val queue = Module(new Queue(new IfOutBundle, entries = 3, pipe = true, flow = true))
 
+    val can_fetch = queue.io.count <= 1.U
+    
+    // We can fetch if the queue has space OR if we are flushing (overwrite)
+    val fetch_allowed = can_fetch || io.pcOverwrite.valid
+
+    io.instAddr := Mux(io.pcOverwrite.valid, io.pcOverwrite.bits, pc)
+    
+    val pc_delayed = RegEnable(io.instAddr, fetch_allowed)
+    
     when (io.pcOverwrite.valid) {
-        pc := io.pcOverwrite.bits
-        valid := false.B
-    } .elsewhen (io.ifOut.ready) {
+        pc := io.pcOverwrite.bits + 4.U
+    } .elsewhen (fetch_allowed) {
         pc := pc + 4.U
-        fetchingPc := pc
-        valid := true.B
     }
 
-    // Output logic, aligned to next cycle
-    io.ifOut.bits.pc := fetchingPc
-    io.ifOut.bits.inst := io.instData // 1 cycle latency read
-    io.ifOut.valid := valid && !io.pcOverwrite.valid 
+    val was_fetching = RegNext(fetch_allowed, false.B)
+    queue.io.enq.valid := was_fetching && !io.pcOverwrite.valid
+    queue.io.enq.bits.inst := io.instData
+    queue.io.enq.bits.pc   := pc_delayed
+
+    queue.reset := reset.asBool || io.pcOverwrite.valid
+
+    io.ifOut <> queue.io.deq
 }

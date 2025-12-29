@@ -15,6 +15,8 @@ class InstDecoder extends CycleAwareModule {
 
         // Output to ID/EX Pipeline Register
         val decodedInst = Output(new DecodedInstructionBundle)
+
+        val flush = Input(Bool())
     })
 
     io.regComm.scoreboardParam0.addr := 0.U
@@ -112,7 +114,7 @@ class InstDecoder extends CycleAwareModule {
             decoded.memOpWidth := getMemOpWidth(funct3)
             decoded.op2 := rs2Data // Store data comes from rs2
         }
-        when(decoded.regWriteDest =/= 0.U) {
+        when(decoded.regWriteDest =/= 0.U && !io.flush) {
             io.regComm.markBusy.valid := true.B
             io.regComm.markBusy.bits  := decoded.regWriteDest
         }
@@ -122,7 +124,7 @@ class InstDecoder extends CycleAwareModule {
     
     io.regComm.markBusy.valid := false.B
     io.regComm.markBusy.bits := 0.U
-    when(io.ifInput.valid && !hasHazard && decoded.regWriteDest =/= 0.U) {
+    when(io.ifInput.valid && !hasHazard && decoded.regWriteDest =/= 0.U && !io.flush) {
         io.regComm.markBusy.valid := true.B
         io.regComm.markBusy.bits  := decoded.regWriteDest
     }

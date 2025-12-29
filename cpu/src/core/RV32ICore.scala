@@ -28,12 +28,12 @@ class RV32ICore(val hexFile: String, val verbose: Boolean = true) extends Module
         flushSignal.bits  := 0.U
     }
 
-
     instMemory.io.addr := instFetcher.io.instAddr
     instFetcher.io.instData := instMemory.io.inst
 
     instDecoder.io.ifInput <> instFetcher.io.ifOut
     instDecoder.io.regComm <> regFile.io.idComm
+    instDecoder.io.flush := flushSignal.valid
     
     when(flushSignal.valid) {
         id_ex_reg := DecodedInstructionBundle.ofNoop()
