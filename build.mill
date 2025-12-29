@@ -18,7 +18,6 @@ object cpu extends ScalaModule {
 
   object test extends ScalaTests {
     def testFramework = "org.scalatest.tools.Framework"
-    override def sources = T.sources(millSourcePath / "src")
     
     override def ivyDeps = Agg(
       ivy"org.scalatest::scalatest:3.2.18"
