@@ -17,6 +17,7 @@ class CProgramSpec extends AnyFunSuite {
   private val repoRoot: Path = findRepoRoot(Paths.get(System.getProperty("user.dir")).toAbsolutePath)
   private val cDir: Path = repoRoot.resolve("cpu/test/resources/c")
   private val expectedDir: Path = repoRoot.resolve("cpu/test/resources/expected")
+  private val linkageDir: Path = repoRoot.resolve("cpu/test/resources/linkage")
   private val genDir: Path = repoRoot.resolve("cpu/test/generated")
 
   private def cmdExists(cmd: String): Boolean = {
@@ -73,8 +74,8 @@ class CProgramSpec extends AnyFunSuite {
     val bin = genDir.resolve(s"$name.bin")
     val hex = genDir.resolve(s"$name.hex")
 
-    val linkLd = repoRoot.resolve("sw/link.ld")
-    val crt0 = repoRoot.resolve("sw/crt0.S")
+    val linkLd = linkageDir.resolve("link.ld")
+    val crt0 = linkageDir.resolve("crt0.S")
 
     val compileCmd = Seq(
       gcc,
