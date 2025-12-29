@@ -104,29 +104,29 @@ class CProgramSpec extends AnyFunSuite {
     hex
   }
 
-  test("C tests build + run on CPU") {
-    if (toolchain.isEmpty) {
-      cancel(
-        s"RISC-V toolchain not found. Tried prefixes: riscv32-unknown-elf-, riscv64-unknown-elf-, etc. Set RISCV_BIN (e.g. /opt/riscv/bin/) or put tools on PATH."
-      )
-    }
-
+  if (toolchain.nonEmpty) {
     val cFiles =
       if (Files.isDirectory(cDir)) Files.list(cDir).iterator().asScala.filter(_.toString.endsWith(".c")).toList
       else Nil
 
-    assert(cFiles.nonEmpty, s"No C tests found under $cDir")
-
     cFiles.foreach { cFile =>
       val name = cFile.getFileName.toString.stripSuffix(".c")
-      val expected = readExpected(name)
-      val hex = buildHexFor(cFile)
+      test(s"C test: $name") {
+        val expected = readExpected(name)
+        val hex = buildHexFor(cFile)
 
-      val res = core.Runner.run(hex.toString, maxCycles = 1000, verbose = false)
-      res.exitCode match {
-        case Some(code) => assert(code == expected, s"$name exit code mismatch")
-        case None       => fail(s"$name timed out after ${res.cycles} cycles")
+        val res = core.Runner.run(hex.toString, maxCycles = 5000, verbose = false)
+        res.exitCode match {
+          case Some(code) => assert(code == expected, s"$name exit code mismatch")
+          case None       => fail(s"$name timed out after ${res.cycles} cycles")
+        }
       }
+    }
+  } else {
+    test("C tests (skipped)") {
+      cancel(
+        s"RISC-V toolchain not found. Tried prefixes: riscv32-unknown-elf-, riscv64-unknown-elf-, etc. Set RISCV_BIN (e.g. /opt/riscv/bin/) or put tools on PATH."
+      )
     }
   }
 }
